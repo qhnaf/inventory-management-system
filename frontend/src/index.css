@@ -1,0 +1,366 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+/* ==========================================================================
+   SWISS / SCANDINAVIAN MINIMALIST TECH UI STYLESHEET
+   ========================================================================== */
+:root {
+  /* Skema Warna Monokromatik & Netral */
+  --bg-body: #fafafa;
+  --bg-surface: #ffffff;
+  --bg-subtle: #f8fafc;
+  --bg-hover: #f1f5f9;
+
+  --text-main: #0f172a;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+
+  /* Aksen Netral Dominan */
+  --accent-main: #0f172a;
+  --accent-hover: #1e293b;
+  --accent-ring: rgba(15, 23, 42, 0.08);
+
+  /* Border & Garis Halus */
+  --border-color: #e2e8f0;
+  --border-light: #f1f5f9;
+
+  /* Skala Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+
+  /* Radius Konsisten (6px - 8px) */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+
+  /* Bayangan Mikro Halus */
+  --shadow-micro: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+
+  --transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Reset & Base Typography */
+* {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: var(--bg-body);
+  color: var(--text-main);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding: var(--space-xl) var(--space-lg);
+}
+
+/* Layout Wrapper - App Container Clean */
+.app-container {
+  width: min(1100px, 100%);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-micro);
+  padding: var(--space-2xl);
+}
+
+/* Header Section */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 400;
+  margin-top: var(--space-xs);
+}
+
+/* Minimalist Card Component */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow-micro);
+  margin-top: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  transition: var(--transition);
+}
+
+.card:hover {
+  border-color: #cbd5e1;
+}
+
+/* Form Controls */
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-xs);
+}
+
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 26px; /* Menyiapkan area cadangan di bawah input agar tidak terjadi layout shift */
+  transition: var(--transition);
+  outline: none;
+}
+
+input[type="text"]::placeholder,
+input[type="number"]::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+input[type="text"]:hover,
+input[type="number"]:hover,
+select:hover,
+textarea:hover {
+  border-color: #cbd5e1;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent-main);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px 16px;
+  padding-right: 36px;
+}
+
+/* ==========================================================================
+   STYLING PESAN ERROR VALIDASI FORM (App.jsx) - ZERO LAYOUT SHIFT
+   ========================================================================== */
+input + p,
+select + p,
+textarea + p {
+  position: absolute; /* Diposisikan melayang agar tidak menggeser elemen di bawahnya */
+  color: #dc2626; /* Merah terang & jelas untuk pesan error */
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: -22px; /* Berada di dalam celah margin bawah input */
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+/* Highlight border merah pada input ketika muncul pesan error di bawahnya */
+input:has(+ p),
+select:has(+ p),
+textarea:has(+ p) {
+  border-color: #fca5a5;
+  background-color: #fef2f2;
+}
+
+input:has(+ p):focus,
+select:has(+ p):focus,
+textarea:has(+ p):focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+/* Buttons */
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-main);
+  background: var(--accent-main);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: var(--transition);
+  user-select: none;
+}
+
+/* Jarak (gap) antar tombol yang berdampingan */
+button + button {
+  margin-left: 10px;
+}
+
+/* Berikan jarak atas pada tombol di dalam Card */
+.card button {
+  margin-top: 12px;
+}
+
+button:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+button:disabled:hover {
+  background: var(--accent-main);
+  border-color: var(--accent-main);
+}
+
+button:active {
+  opacity: 0.9;
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+/* Secondary Button */
+button.secondary {
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+}
+
+button.secondary:hover {
+  background: var(--bg-subtle);
+  border-color: #cbd5e1;
+}
+
+/* Table - Clean Swiss Grid */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-md);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-surface);
+}
+
+th {
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+td {
+  padding: 12px 14px;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 400;
+  border-bottom: 1px solid var(--border-light);
+  transition: var(--transition);
+}
+
+tbody tr:hover {
+  background-color: var(--bg-subtle);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Responsive Tweaks */
+@media (max-width: 640px) {
+  body {
+    padding: var(--space-md) var(--space-sm);
+  }
+
+  .app-container {
+    padding: var(--space-lg);
+    border-radius: var(--radius-sm);
+  }
+
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-xs);
+  }
+
+  .title {
+    font-size: 18px;
+  }
+
+  .card {
+    padding: var(--space-lg);
+  }
+
+  th, td {
+    padding: 8px 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+  margin-top: var(--space-xl);
+}
+
+.product-grid .card {
+  margin-top: 0;
+  margin-bottom: 0;
+}
