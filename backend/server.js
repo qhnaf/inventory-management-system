@@ -13,7 +13,7 @@ app.get("/", (req, res) => {
   res.send("Hello from Inventory Backend!");
 });
 
-app.get("/api/products", (req, res) => {
+app.get("/api/products", (req, res, next) => {
   const page = req.query.page === undefined ? 1 : Number(req.query.page);
 
   const limit = req.query.limit === undefined ? 10 : Number(req.query.limit);
@@ -79,20 +79,12 @@ app.get("/api/products", (req, res) => {
 
   db.query(sql, params, (err, results) => {
     if (err) {
-      console.error("Gagal mengambil products:", err.message);
-
-      return res.status(500).json({
-        message: "Gagal mengambil data products.",
-      });
+      return next(err);
     }
 
     db.query(countSql, countParams, (err, countResults) => {
       if (err) {
-        console.error("Gagal menghitung products:", err.message);
-
-        return res.status(500).json({
-          message: "Gagal menghitung total products.",
-        });
+        return next(err);
       }
 
       const total = countResults[0].total;
@@ -111,7 +103,7 @@ app.get("/api/products", (req, res) => {
   });
 });
 
-app.get("/api/products/:id", (req, res) => {
+app.get("/api/products/:id", (req, res, next) => {
   const productId = req.params.id;
 
   const sql = `
@@ -122,11 +114,7 @@ app.get("/api/products/:id", (req, res) => {
 
   db.query(sql, [productId], (err, results) => {
     if (err) {
-      console.error("Gagal mengambil product:", err.message);
-
-      return res.status(500).json({
-        message: "Gagal mengambil product.",
-      });
+      return next(err);
     }
 
     if (results.length === 0) {
@@ -139,38 +127,98 @@ app.get("/api/products/:id", (req, res) => {
   });
 });
 
-app.post("/api/products", (req, res) => {
+app.post("/api/products", (req, res, next) => {
   const { name, stock, price, category } = req.body;
+
+  if (typeof name !== "string" || name.trim() === "") {
+    return res.status(400).json({
+      success: false,
+      message: "Nama product wajib diisi.",
+      error: "VALIDATION_ERROR",
+    });
+  }
+
+  if (typeof stock !== "number" || stock < 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Stock harus berupa angka dan tidak boleh negatif.",
+      error: "VALIDATION_ERROR",
+    });
+  }
+
+  if (typeof price !== "number" || price <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Price harus berupa angka dan lebih besar dari 0.",
+      error: "VALIDATION_ERROR",
+    });
+  }
+
+  if (typeof category !== "string" || category.trim() === "") {
+    return res.status(400).json({
+      success: false,
+      message: "Category wajib diisi.",
+      error: "VALIDATION_ERROR",
+    });
+  }
 
   const sql = `
     INSERT INTO products (name, stock, price, category)
     VALUES (?, ?, ?, ?)
   `;
 
-  const values = [name, stock, price, category];
+  const values = [name.trim(), stock, price, category.trim()];
 
   db.query(sql, values, (err, result) => {
     if (err) {
-      console.error("Gagal menambahkan product:", err.message);
-
-      return res.status(500).json({
-        message: "Gagal menambahkan product.",
-      });
+      return next(err);
     }
 
     res.status(201).json({
       id: result.insertId,
-      name,
+      name: name.trim(),
       stock,
       price,
-      category,
+      category: category.trim(),
     });
   });
 });
 
-app.put("/api/products/:id", (req, res) => {
+app.put("/api/products/:id", (req, res, next) => {
   const productId = req.params.id;
   const { name, stock, price, category } = req.body;
+
+  if (typeof name !== "string" || name.trim() === "") {
+    return res.status(400).json({
+      success: false,
+      message: "Nama product wajib diisi.",
+      error: "VALIDATION_ERROR",
+    });
+  }
+
+  if (typeof stock !== "number" || stock < 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Stock harus berupa angka dan tidak boleh negatif.",
+      error: "VALIDATION_ERROR",
+    });
+  }
+
+  if (typeof price !== "number" || price <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Price harus berupa angka dan lebih besar dari 0.",
+      error: "VALIDATION_ERROR",
+    });
+  }
+
+  if (typeof category !== "string" || category.trim() === "") {
+    return res.status(400).json({
+      success: false,
+      message: "Category wajib diisi.",
+      error: "VALIDATION_ERROR",
+    });
+  }
 
   const sql = `
     UPDATE products
@@ -178,28 +226,35 @@ app.put("/api/products/:id", (req, res) => {
     WHERE id = ?
   `;
 
-  const values = [name, stock, price, category, productId];
+  const values = [name.trim(), stock, price, category.trim(), productId];
 
   db.query(sql, values, (err, result) => {
     if (err) {
-      console.error("Gagal mengupdate product:", err.message);
+      return next(err);
+    }
 
-      return res.status(500).json({
-        message: "Gagal mengupdate product.",
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Product tidak ditemukan.",
+        error: "NOT_FOUND",
       });
     }
 
-    res.json({
-      id: Number(productId),
-      name,
-      stock,
-      price,
-      category,
+    res.status(200).json({
+      success: true,
+      data: {
+        id: Number(productId),
+        name: name.trim(),
+        stock,
+        price,
+        category: category.trim(),
+      },
     });
   });
 });
 
-app.delete("/api/products/:id", (req, res) => {
+app.delete("/api/products/:id", (req, res, next) => {
   const productId = req.params.id;
 
   const sql = `
@@ -209,19 +264,37 @@ app.delete("/api/products/:id", (req, res) => {
 
   db.query(sql, [productId], (err, result) => {
     if (err) {
-      console.error("Gagal menghapus product:", err.message);
+      return next(err);
+    }
 
-      return res.status(500).json({
-        message: "Gagal menghapus product.",
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Product tidak ditemukan.",
+        error: "NOT_FOUND",
       });
     }
 
-    res.json({
+    res.status(200).json({
+      success: true,
       message: "Product berhasil dihapus.",
-      id: Number(productId),
+      data: {
+        id: Number(productId),
+      },
     });
   });
 });
+
+app.use((err, req, res, next) => {
+  console.error(err);
+
+  res.status(500).json({
+    success: false,
+    message: "Terjadi kesalahan pada server.",
+    error: "INTERNAL_SERVER_ERROR",
+  });
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server berjalan di http://localhost:${PORT}`);
