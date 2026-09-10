@@ -27,27 +27,39 @@ app.get("/api/products", (req, res, next) => {
   const allowedOrders = ["asc", "desc"];
 
   if (!allowedSorts.includes(sort)) {
-    return res.status(400).json({
-      message: "Sort tidak valid.",
-    });
+    const error = new Error("Sort tidak valid.");
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
   }
 
   if (!allowedOrders.includes(order)) {
-    return res.status(400).json({
-      message: "Order tidak valid.",
-    });
+    const error = new Error("Order tidak valid.");
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
   }
 
   if (Number.isNaN(page) || page < 1) {
-    return res.status(400).json({
-      message: "Page harus berupa angka minimal 1.",
-    });
+    const error = new Error("Page harus berupa angka minimal 1.");
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
   }
 
   if (Number.isNaN(limit) || limit < 1) {
-    return res.status(400).json({
-      message: "Limit harus berupa angka minimal 1.",
-    });
+    const error = new Error("Limit harus berupa angka minimal 1.");
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
   }
 
   const offset = (page - 1) * limit;
@@ -91,6 +103,7 @@ app.get("/api/products", (req, res, next) => {
       const totalPages = Math.ceil(total / limit);
 
       res.json({
+        success: true,
         data: results,
         pagination: {
           page: page,
@@ -118,12 +131,18 @@ app.get("/api/products/:id", (req, res, next) => {
     }
 
     if (results.length === 0) {
-      return res.status(404).json({
-        message: "Product tidak ditemukan.",
-      });
+      const error = new Error("Product tidak ditemukan.");
+
+      error.status = 404;
+      error.code = "NOT_FOUND";
+
+      return next(error);
     }
 
-    res.json(results[0]);
+    res.json({
+      success: true,
+      data: results[0],
+    });
   });
 });
 
@@ -131,35 +150,41 @@ app.post("/api/products", (req, res, next) => {
   const { name, stock, price, category } = req.body;
 
   if (typeof name !== "string" || name.trim() === "") {
-    return res.status(400).json({
-      success: false,
-      message: "Nama product wajib diisi.",
-      error: "VALIDATION_ERROR",
-    });
+    const error = new Error("Nama product wajib diisi.");
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
   }
 
   if (typeof stock !== "number" || stock < 0) {
-    return res.status(400).json({
-      success: false,
-      message: "Stock harus berupa angka dan tidak boleh negatif.",
-      error: "VALIDATION_ERROR",
-    });
+    const error = new Error(
+      "Stock harus berupa angka dan tidak boleh negatif.",
+    );
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
   }
 
   if (typeof price !== "number" || price <= 0) {
-    return res.status(400).json({
-      success: false,
-      message: "Price harus berupa angka dan lebih besar dari 0.",
-      error: "VALIDATION_ERROR",
-    });
+    const error = new Error("Price harus berupa angka dan lebih besar dari 0.");
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
   }
 
   if (typeof category !== "string" || category.trim() === "") {
-    return res.status(400).json({
-      success: false,
-      message: "Category wajib diisi.",
-      error: "VALIDATION_ERROR",
-    });
+    const error = new Error("Category wajib diisi.");
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
   }
 
   const sql = `
@@ -175,11 +200,14 @@ app.post("/api/products", (req, res, next) => {
     }
 
     res.status(201).json({
-      id: result.insertId,
-      name: name.trim(),
-      stock,
-      price,
-      category: category.trim(),
+      success: true,
+      data: {
+        id: result.insertId,
+        name: name.trim(),
+        stock,
+        price,
+        category: category.trim(),
+      },
     });
   });
 });
@@ -189,35 +217,41 @@ app.put("/api/products/:id", (req, res, next) => {
   const { name, stock, price, category } = req.body;
 
   if (typeof name !== "string" || name.trim() === "") {
-    return res.status(400).json({
-      success: false,
-      message: "Nama product wajib diisi.",
-      error: "VALIDATION_ERROR",
-    });
+    const error = new Error("Nama product wajib diisi.");
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
   }
 
   if (typeof stock !== "number" || stock < 0) {
-    return res.status(400).json({
-      success: false,
-      message: "Stock harus berupa angka dan tidak boleh negatif.",
-      error: "VALIDATION_ERROR",
-    });
+    const error = new Error(
+      "Stock harus berupa angka dan tidak boleh negatif.",
+    );
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
   }
 
   if (typeof price !== "number" || price <= 0) {
-    return res.status(400).json({
-      success: false,
-      message: "Price harus berupa angka dan lebih besar dari 0.",
-      error: "VALIDATION_ERROR",
-    });
+    const error = new Error("Price harus berupa angka dan lebih besar dari 0.");
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
   }
 
   if (typeof category !== "string" || category.trim() === "") {
-    return res.status(400).json({
-      success: false,
-      message: "Category wajib diisi.",
-      error: "VALIDATION_ERROR",
-    });
+    const error = new Error("Category wajib diisi.");
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
   }
 
   const sql = `
@@ -234,11 +268,12 @@ app.put("/api/products/:id", (req, res, next) => {
     }
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Product tidak ditemukan.",
-        error: "NOT_FOUND",
-      });
+      const error = new Error("Product tidak ditemukan.");
+
+      error.status = 404;
+      error.code = "NOT_FOUND";
+
+      return next(error);
     }
 
     res.status(200).json({
@@ -268,11 +303,11 @@ app.delete("/api/products/:id", (req, res, next) => {
     }
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Product tidak ditemukan.",
-        error: "NOT_FOUND",
-      });
+      const error = new Error("Product tidak ditemukan.");
+
+      error.status = 404;
+      error.code = "NOT_FOUND";
+      return next(error);
     }
 
     res.status(200).json({
@@ -288,13 +323,16 @@ app.delete("/api/products/:id", (req, res, next) => {
 app.use((err, req, res, next) => {
   console.error(err);
 
-  res.status(500).json({
+  const status = err.status || 500;
+  const code = err.code || "INTERNAL_SERVER_ERROR";
+  const message = err.message || "Terjadi kesalahan pada server.";
+
+  res.status(status).json({
     success: false,
-    message: "Terjadi kesalahan pada server.",
-    error: "INTERNAL_SERVER_ERROR",
+    message,
+    error: code,
   });
 });
-
 
 app.listen(PORT, () => {
   console.log(`Server berjalan di http://localhost:${PORT}`);
