@@ -1,6 +1,12 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const db = require("./db");
+const authenticateToken = require("./authMiddleware");
+const authorizeRole = require("./authorizeRole");
 
 const app = express();
 
@@ -13,7 +19,7 @@ app.get("/", (req, res) => {
   res.send("Hello from Inventory Backend!");
 });
 
-app.get("/api/products", (req, res, next) => {
+app.get("/api/products", authenticateToken, (req, res, next) => {
   const page = req.query.page === undefined ? 1 : Number(req.query.page);
 
   const limit = req.query.limit === undefined ? 10 : Number(req.query.limit);
@@ -116,7 +122,7 @@ app.get("/api/products", (req, res, next) => {
   });
 });
 
-app.get("/api/products/:id", (req, res, next) => {
+app.get("/api/products/:id", authenticateToken, (req, res, next) => {
   const productId = req.params.id;
 
   const sql = `
@@ -146,7 +152,7 @@ app.get("/api/products/:id", (req, res, next) => {
   });
 });
 
-app.post("/api/products", (req, res, next) => {
+app.post("/api/products", authenticateToken, authorizeRole("admin"), (req, res, next) => {
   const { name, stock, price, category } = req.body;
 
   if (typeof name !== "string" || name.trim() === "") {
@@ -212,7 +218,7 @@ app.post("/api/products", (req, res, next) => {
   });
 });
 
-app.put("/api/products/:id", (req, res, next) => {
+app.put("/api/products/:id", authenticateToken, authorizeRole("admin"), (req, res, next) => {
   const productId = req.params.id;
   const { name, stock, price, category } = req.body;
 
@@ -289,7 +295,7 @@ app.put("/api/products/:id", (req, res, next) => {
   });
 });
 
-app.delete("/api/products/:id", (req, res, next) => {
+app.delete("/api/products/:id", authenticateToken, authorizeRole("admin"), (req, res, next) => {
   const productId = req.params.id;
 
   const sql = `
@@ -319,6 +325,184 @@ app.delete("/api/products/:id", (req, res, next) => {
     });
   });
 });
+
+app.post("/api/auth/register", async (req, res, next) => {
+  const { username, password } = req.body;
+
+  // Validasi username
+  if (typeof username !== "string" || username.trim() === "") {
+    const error = new Error("Username wajib diisi.");
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
+  }
+
+  // Validasi password
+  if (typeof password !== "string" || password === "") {
+    const error = new Error("Password wajib diisi.");
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
+  }
+
+  try {
+    // Hash password sebelum disimpan ke database
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const sql = `
+      INSERT INTO users (username, password_hash)
+      VALUES (?, ?)
+    `;
+
+    const values = [username.trim(), passwordHash];
+
+    db.query(sql, values, (err, result) => {
+      if (err) {
+        // Username sudah digunakan
+        if (err.code === "ER_DUP_ENTRY") {
+          const error = new Error("Username sudah digunakan.");
+
+          error.status = 409;
+          error.code = "CONFLICT";
+
+          return next(error);
+        }
+
+        return next(err);
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "User berhasil didaftarkan.",
+        data: {
+          id: result.insertId,
+          username: username.trim(),
+        },
+      });
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/auth/login", (req, res, next) => {
+  const { username, password } = req.body;
+
+  // Validasi username
+  if (typeof username !== "string" || username.trim() === "") {
+    const error = new Error("Username wajib diisi.");
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
+  }
+
+  // Validasi password
+  if (typeof password !== "string" || password === "") {
+    const error = new Error("Password wajib diisi.");
+
+    error.status = 400;
+    error.code = "VALIDATION_ERROR";
+
+    return next(error);
+  }
+
+  const sql = `
+    SELECT id, username, password_hash, role
+    FROM users
+    WHERE username = ?
+  `;
+
+  db.query(sql, [username.trim()], async (err, results) => {
+    if (err) {
+      return next(err);
+    }
+
+    // Username tidak ditemukan
+    if (results.length === 0) {
+      const error = new Error("Username atau password salah.");
+
+      error.status = 401;
+      error.code = "INVALID_CREDENTIALS";
+
+      return next(error);
+    }
+
+    const user = results[0];
+
+    try {
+      const isPasswordValid = await bcrypt.compare(
+        password,
+        user.password_hash,
+      );
+
+      // Password salah
+      if (!isPasswordValid) {
+        const error = new Error("Username atau password salah.");
+
+        error.status = 401;
+        error.code = "INVALID_CREDENTIALS";
+
+        return next(error);
+      }
+
+      const token = jwt.sign(
+        {
+          userId: user.id,
+          username: user.username,
+          role: user.role,
+        },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: "1h",
+        },
+      );
+
+      // Login berhasil
+      res.status(200).json({
+        success: true,
+        message: "Login berhasil.",
+        data: {
+          id: user.id,
+          username: user.username,
+        },
+        token,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+});
+
+app.get("/api/auth/me", authenticateToken, (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Token valid.",
+    data: {
+      user: req.user,
+    },
+  });
+});
+
+app.get(
+  "/api/auth/admin-only",
+  authenticateToken,
+  authorizeRole("admin"),
+  (req, res) => {
+    res.status(200).json({
+      success: true,
+      message: "Anda berhasil mengakses area admin.",
+      data: {
+        user: req.user,
+      },
+    });
+  },
+);
 
 app.use((err, req, res, next) => {
   console.error(err);
