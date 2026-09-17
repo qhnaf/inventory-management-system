@@ -728,6 +728,10 @@ app.get(
   authorizePermission("stock.read"),
   (req, res, next) => {
     const productId = Number(req.params.id);
+    const { type } = req.query;
+
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
 
     if (!Number.isInteger(productId) || productId <= 0) {
       const error = new Error("ID product tidak valid.");
@@ -738,33 +742,103 @@ app.get(
       return next(error);
     }
 
-    const sql = `
-      SELECT
-        sh.id,
-        sh.product_id,
-        p.name AS product_name,
-        sh.quantity,
-        sh.type,
-        sh.reason,
-        u.username,
-        sh.created_at
+    if (!Number.isInteger(page) || page <= 0) {
+      const error = new Error("Page harus berupa bilangan bulat lebih dari 0.");
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (!Number.isInteger(limit) || limit <= 0) {
+      const error = new Error("Limit harus berupa bilangan bulat lebih dari 0.");
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (type !== undefined && !["IN", "OUT"].includes(type)) {
+      const error = new Error("Type harus berupa IN atau OUT.");
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    const offset = (page - 1) * limit;
+
+    let countSql = `
+      SELECT COUNT(*) AS total
       FROM stock_history sh
-      JOIN products p
-        ON sh.product_id = p.id
-      JOIN users u
-        ON sh.user_id = u.id
       WHERE sh.product_id = ?
-      ORDER BY sh.created_at DESC, sh.id DESC
     `;
 
-    db.query(sql, [productId], (err, results) => {
+    const countValues = [productId];
+
+    if (type !== undefined) {
+      countSql += ` AND sh.type = ?`;
+      countValues.push(type);
+    }
+
+    db.query(countSql, countValues, (err, countResults) => {
       if (err) {
         return next(err);
       }
 
-      res.status(200).json({
-        success: true,
-        data: results,
+      const total = countResults[0].total;
+      const totalPages = Math.ceil(total / limit);
+
+      let sql = `
+        SELECT
+          sh.id,
+          sh.product_id,
+          p.name AS product_name,
+          sh.quantity,
+          sh.type,
+          sh.reason,
+          u.username,
+          sh.created_at
+        FROM stock_history sh
+        JOIN products p
+          ON sh.product_id = p.id
+        JOIN users u
+          ON sh.user_id = u.id
+        WHERE sh.product_id = ?
+      `;
+
+      const values = [productId];
+
+      if (type !== undefined) {
+        sql += ` AND sh.type = ?`;
+        values.push(type);
+      }
+
+      sql += `
+        ORDER BY sh.created_at DESC, sh.id DESC
+        LIMIT ? OFFSET ?
+      `;
+
+      values.push(limit, offset);
+
+      db.query(sql, values, (err, results) => {
+        if (err) {
+          return next(err);
+        }
+
+        res.status(200).json({
+          success: true,
+          data: results,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages,
+          },
+        });
       });
     });
   },
@@ -779,18 +853,6 @@ app.get("/api/auth/me", authenticateToken, (req, res) => {
     },
   });
 });
-
-app.get(
-  "/api/test/products-create",
-  authenticateToken,
-  authorizePermission("products.create"),
-  (req, res) => {
-    res.json({
-      success: true,
-      message: "Anda memiliki permission products.create.",
-    });
-  },
-);
 
 app.use((err, req, res, next) => {
   console.error(err);
