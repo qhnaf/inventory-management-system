@@ -844,6 +844,746 @@ app.get(
   },
 );
 
+app.get(
+  "/api/suppliers",
+  authenticateToken,
+  authorizePermission("suppliers.read"),
+  (req, res, next) => {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+
+    if (!Number.isInteger(page) || page <= 0) {
+      const error = new Error(
+        "Page harus berupa bilangan bulat lebih dari 0.",
+      );
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (!Number.isInteger(limit) || limit <= 0) {
+      const error = new Error(
+        "Limit harus berupa bilangan bulat lebih dari 0.",
+      );
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    const offset = (page - 1) * limit;
+
+    const countSql = `
+      SELECT COUNT(*) AS total
+      FROM suppliers
+    `;
+
+    db.query(countSql, (err, countResults) => {
+      if (err) {
+        return next(err);
+      }
+
+      const total = countResults[0].total;
+      const totalPages = Math.ceil(total / limit);
+
+      const sql = `
+        SELECT
+          id,
+          name,
+          phone,
+          email,
+          address,
+          created_at
+        FROM suppliers
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+      `;
+
+      db.query(sql, [limit, offset], (err, results) => {
+        if (err) {
+          return next(err);
+        }
+
+        res.status(200).json({
+          success: true,
+          data: results,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages,
+          },
+        });
+      });
+    });
+  },
+);
+
+app.get(
+  "/api/suppliers/:id",
+  authenticateToken,
+  authorizePermission("suppliers.read"),
+  (req, res, next) => {
+    const supplierId = Number(req.params.id);
+
+    if (!Number.isInteger(supplierId) || supplierId <= 0) {
+      const error = new Error("ID supplier tidak valid.");
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    const sql = `
+      SELECT
+        id,
+        name,
+        phone,
+        email,
+        address,
+        created_at
+      FROM suppliers
+      WHERE id = ?
+    `;
+
+    db.query(sql, [supplierId], (err, results) => {
+      if (err) {
+        return next(err);
+      }
+
+      if (results.length === 0) {
+        const error = new Error("Supplier tidak ditemukan.");
+
+        error.status = 404;
+        error.code = "NOT_FOUND";
+
+        return next(error);
+      }
+
+      res.status(200).json({
+        success: true,
+        data: results[0],
+      });
+    });
+  },
+);
+
+app.post(
+  "/api/suppliers",
+  authenticateToken,
+  authorizePermission("suppliers.create"),
+  (req, res, next) => {
+    const { name, phone, email, address } = req.body;
+
+    if (typeof name !== "string" || name.trim() === "") {
+      const error = new Error("Nama supplier wajib diisi.");
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (name.trim().length > 100) {
+      const error = new Error(
+        "Nama supplier maksimal 100 karakter.",
+      );
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (
+      phone !== undefined &&
+      phone !== null &&
+      typeof phone !== "string"
+    ) {
+      const error = new Error("Phone harus berupa string.");
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (
+      email !== undefined &&
+      email !== null &&
+      typeof email !== "string"
+    ) {
+      const error = new Error("Email harus berupa string.");
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (
+      address !== undefined &&
+      address !== null &&
+      typeof address !== "string"
+    ) {
+      const error = new Error("Address harus berupa string.");
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (phone && phone.trim().length > 20) {
+      const error = new Error(
+        "Phone maksimal 20 karakter.",
+      );
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (email && email.trim().length > 100) {
+      const error = new Error(
+        "Email maksimal 100 karakter.",
+      );
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    const sql = `
+      INSERT INTO suppliers (
+        name,
+        phone,
+        email,
+        address
+      )
+      VALUES (?, ?, ?, ?)
+    `;
+
+    const values = [
+      name.trim(),
+      phone ? phone.trim() : null,
+      email ? email.trim() : null,
+      address ? address.trim() : null,
+    ];
+
+    db.query(sql, values, (err, result) => {
+      if (err) {
+        return next(err);
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Supplier berhasil dibuat.",
+        data: {
+          id: result.insertId,
+          name: name.trim(),
+          phone: phone ? phone.trim() : null,
+          email: email ? email.trim() : null,
+          address: address ? address.trim() : null,
+        },
+      });
+    });
+  },
+);
+
+app.put(
+  "/api/suppliers/:id",
+  authenticateToken,
+  authorizePermission("suppliers.update"),
+  (req, res, next) => {
+    const supplierId = Number(req.params.id);
+    const { name, phone, email, address } = req.body;
+
+    if (!Number.isInteger(supplierId) || supplierId <= 0) {
+      const error = new Error("ID supplier tidak valid.");
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (typeof name !== "string" || name.trim() === "") {
+      const error = new Error("Nama supplier wajib diisi.");
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (name.trim().length > 100) {
+      const error = new Error(
+        "Nama supplier maksimal 100 karakter.",
+      );
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (
+      phone !== undefined &&
+      phone !== null &&
+      typeof phone !== "string"
+    ) {
+      const error = new Error("Phone harus berupa string.");
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (
+      email !== undefined &&
+      email !== null &&
+      typeof email !== "string"
+    ) {
+      const error = new Error("Email harus berupa string.");
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (
+      address !== undefined &&
+      address !== null &&
+      typeof address !== "string"
+    ) {
+      const error = new Error("Address harus berupa string.");
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (phone && phone.trim().length > 20) {
+      const error = new Error(
+        "Phone maksimal 20 karakter.",
+      );
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    if (email && email.trim().length > 100) {
+      const error = new Error(
+        "Email maksimal 100 karakter.",
+      );
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    const checkSupplierSql = `
+      SELECT id
+      FROM suppliers
+      WHERE id = ?
+    `;
+
+    db.query(checkSupplierSql, [supplierId], (err, results) => {
+      if (err) {
+        return next(err);
+      }
+
+      if (results.length === 0) {
+        const error = new Error("Supplier tidak ditemukan.");
+
+        error.status = 404;
+        error.code = "NOT_FOUND";
+
+        return next(error);
+      }
+
+      const updateSql = `
+        UPDATE suppliers
+        SET
+          name = ?,
+          phone = ?,
+          email = ?,
+          address = ?
+        WHERE id = ?
+      `;
+
+      const values = [
+        name.trim(),
+        phone ? phone.trim() : null,
+        email ? email.trim() : null,
+        address ? address.trim() : null,
+        supplierId,
+      ];
+
+      db.query(updateSql, values, (err) => {
+        if (err) {
+          return next(err);
+        }
+
+        res.status(200).json({
+          success: true,
+          message: "Supplier berhasil diperbarui.",
+          data: {
+            id: supplierId,
+            name: name.trim(),
+            phone: phone ? phone.trim() : null,
+            email: email ? email.trim() : null,
+            address: address ? address.trim() : null,
+          },
+        });
+      });
+    });
+  },
+);
+
+app.delete(
+  "/api/suppliers/:id",
+  authenticateToken,
+  authorizePermission("suppliers.delete"),
+  (req, res, next) => {
+    const supplierId = Number(req.params.id);
+
+    if (!Number.isInteger(supplierId) || supplierId <= 0) {
+      const error = new Error("ID supplier tidak valid.");
+
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+
+      return next(error);
+    }
+
+    const checkSupplierSql = `
+      SELECT id, name
+      FROM suppliers
+      WHERE id = ?
+    `;
+
+    db.query(checkSupplierSql, [supplierId], (err, results) => {
+      if (err) {
+        return next(err);
+      }
+
+      if (results.length === 0) {
+        const error = new Error("Supplier tidak ditemukan.");
+
+        error.status = 404;
+        error.code = "NOT_FOUND";
+
+        return next(error);
+      }
+
+      const supplier = results[0];
+
+      const deleteSql = `
+        DELETE FROM suppliers
+        WHERE id = ?
+      `;
+
+      db.query(deleteSql, [supplierId], (err, result) => {
+        if (err) {
+          return next(err);
+        }
+
+        if (result.affectedRows !== 1) {
+          const error = new Error("Gagal menghapus supplier.");
+
+          error.status = 500;
+          error.code = "DELETE_FAILED";
+
+          return next(error);
+        }
+
+        res.status(200).json({
+          success: true,
+          message: "Supplier berhasil dihapus.",
+          data: {
+            id: supplier.id,
+            name: supplier.name,
+          },
+        });
+      });
+    });
+  },
+);
+
+app.get(
+  "/api/products/:id/suppliers",
+  authenticateToken,
+  authorizePermission("suppliers.read"),
+  (req, res, next) => {
+    const productId = Number(req.params.id);
+
+    if (!Number.isInteger(productId) || productId <= 0) {
+      const error = new Error("ID product tidak valid.");
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+      return next(error);
+    }
+
+    const checkProductSql = `
+      SELECT id, name
+      FROM products
+      WHERE id = ?
+    `;
+
+    db.query(checkProductSql, [productId], (err, productResults) => {
+      if (err) return next(err);
+
+      if (productResults.length === 0) {
+        const error = new Error("Product tidak ditemukan.");
+        error.status = 404;
+        error.code = "NOT_FOUND";
+        return next(error);
+      }
+
+      const sql = `
+        SELECT
+          s.id,
+          s.name,
+          s.phone,
+          s.email,
+          s.address
+        FROM product_suppliers ps
+        JOIN suppliers s
+          ON ps.supplier_id = s.id
+        WHERE ps.product_id = ?
+        ORDER BY s.id ASC
+      `;
+
+      db.query(sql, [productId], (err, results) => {
+        if (err) return next(err);
+
+        res.status(200).json({
+          success: true,
+          data: {
+            product: productResults[0],
+            suppliers: results,
+          },
+        });
+      });
+    });
+  },
+);
+
+app.post(
+  "/api/products/:id/suppliers",
+  authenticateToken,
+  authorizePermission("suppliers.update"),
+  (req, res, next) => {
+    const productId = Number(req.params.id);
+    const { supplierId } = req.body;
+
+    if (!Number.isInteger(productId) || productId <= 0) {
+      const error = new Error("ID product tidak valid.");
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+      return next(error);
+    }
+
+    if (!Number.isInteger(supplierId) || supplierId <= 0) {
+      const error = new Error("ID supplier tidak valid.");
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+      return next(error);
+    }
+
+    const checkProductSql = `
+      SELECT id, name
+      FROM products
+      WHERE id = ?
+    `;
+
+    db.query(checkProductSql, [productId], (err, productResults) => {
+      if (err) return next(err);
+
+      if (productResults.length === 0) {
+        const error = new Error("Product tidak ditemukan.");
+        error.status = 404;
+        error.code = "NOT_FOUND";
+        return next(error);
+      }
+
+      const checkSupplierSql = `
+        SELECT id, name
+        FROM suppliers
+        WHERE id = ?
+      `;
+
+      db.query(checkSupplierSql, [supplierId], (err, supplierResults) => {
+        if (err) return next(err);
+
+        if (supplierResults.length === 0) {
+          const error = new Error("Supplier tidak ditemukan.");
+          error.status = 404;
+          error.code = "NOT_FOUND";
+          return next(error);
+        }
+
+        const checkRelationshipSql = `
+          SELECT product_id, supplier_id
+          FROM product_suppliers
+          WHERE product_id = ?
+            AND supplier_id = ?
+        `;
+
+        db.query(
+          checkRelationshipSql,
+          [productId, supplierId],
+          (err, relationshipResults) => {
+            if (err) return next(err);
+
+            if (relationshipResults.length > 0) {
+              const error = new Error(
+                "Supplier sudah terhubung dengan product.",
+              );
+              error.status = 409;
+              error.code = "CONFLICT";
+              return next(error);
+            }
+
+            const insertSql = `
+              INSERT INTO product_suppliers (product_id, supplier_id)
+              VALUES (?, ?)
+            `;
+
+            db.query(
+              insertSql,
+              [productId, supplierId],
+              (err) => {
+                if (err) return next(err);
+
+                res.status(201).json({
+                  success: true,
+                  message: "Supplier berhasil ditambahkan ke product.",
+                  data: {
+                    product: productResults[0],
+                    supplier: supplierResults[0],
+                  },
+                });
+              },
+            );
+          },
+        );
+      });
+    });
+  },
+);
+
+app.delete(
+  "/api/products/:id/suppliers/:supplierId",
+  authenticateToken,
+  authorizePermission("suppliers.update"),
+  (req, res, next) => {
+    const productId = Number(req.params.id);
+    const supplierId = Number(req.params.supplierId);
+
+    if (!Number.isInteger(productId) || productId <= 0) {
+      const error = new Error("ID product tidak valid.");
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+      return next(error);
+    }
+
+    if (!Number.isInteger(supplierId) || supplierId <= 0) {
+      const error = new Error("ID supplier tidak valid.");
+      error.status = 400;
+      error.code = "VALIDATION_ERROR";
+      return next(error);
+    }
+
+    const checkRelationshipSql = `
+      SELECT
+        ps.product_id,
+        ps.supplier_id,
+        p.name AS product_name,
+        s.name AS supplier_name
+      FROM product_suppliers ps
+      JOIN products p
+        ON ps.product_id = p.id
+      JOIN suppliers s
+        ON ps.supplier_id = s.id
+      WHERE ps.product_id = ?
+        AND ps.supplier_id = ?
+    `;
+
+    db.query(
+      checkRelationshipSql,
+      [productId, supplierId],
+      (err, results) => {
+        if (err) return next(err);
+
+        if (results.length === 0) {
+          const error = new Error(
+            "Relationship product dan supplier tidak ditemukan.",
+          );
+          error.status = 404;
+          error.code = "NOT_FOUND";
+          return next(error);
+        }
+
+        const relationship = results[0];
+
+        const deleteSql = `
+          DELETE FROM product_suppliers
+          WHERE product_id = ?
+            AND supplier_id = ?
+        `;
+
+        db.query(
+          deleteSql,
+          [productId, supplierId],
+          (err, result) => {
+            if (err) return next(err);
+
+            if (result.affectedRows !== 1) {
+              const error = new Error(
+                "Gagal menghapus relationship product dan supplier.",
+              );
+              error.status = 500;
+              error.code = "DELETE_FAILED";
+              return next(error);
+            }
+
+            res.status(200).json({
+              success: true,
+              message:
+                "Supplier berhasil dilepas dari product.",
+              data: {
+                product: {
+                  id: relationship.product_id,
+                  name: relationship.product_name,
+                },
+                supplier: {
+                  id: relationship.supplier_id,
+                  name: relationship.supplier_name,
+                },
+              },
+            });
+          },
+        );
+      },
+    );
+  },
+);
+
 app.get("/api/auth/me", authenticateToken, (req, res) => {
   res.status(200).json({
     success: true,
